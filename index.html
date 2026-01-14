@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UltraLasso | GPU-Accelerated Genome-Wide Sparse Regression</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #111111;
+            --bg-card: #0d0d0d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666666;
+            --orange-primary: #ff6b00;
+            --orange-secondary: #ff8c38;
+            --orange-dim: #cc5500;
+            --orange-glow: rgba(255, 107, 0, 0.15);
+            --border-color: #1a1a1a;
+            --border-highlight: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 80%, transparent 100%);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: var(--orange-primary);
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--orange-primary);
+        }
+
+        /* Slide sections */
+        .slide {
+            min-height: 100vh;
+            padding: 8rem 4rem 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--orange-dim), transparent);
+            opacity: 0.3;
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Title slide */
+        .title-slide {
+            text-align: center;
+            background: radial-gradient(ellipse at center, var(--orange-glow) 0%, transparent 70%);
+        }
+
+        .title-slide h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--orange-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: 4px;
+            text-shadow: 0 0 60px rgba(255, 107, 0, 0.3);
+        }
+
+        .title-slide .acronym {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .title-slide .acronym span {
+            color: var(--orange-primary);
+            font-weight: 600;
+        }
+
+        .title-slide .subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            letter-spacing: 1px;
+        }
+
+        .title-slide .authors {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 4rem;
+        }
+
+        .key-results {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .result-card:hover {
+            border-color: var(--orange-dim);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(255, 107, 0, 0.1);
+        }
+
+        .result-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--orange-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-card .label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Section headers */
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--orange-primary);
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--orange-dim);
+            display: inline-block;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--orange-secondary);
+            margin: 2rem 0 1rem;
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        /* Text */
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            max-width: 900px;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        em {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--orange-primary);
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        code {
+            color: var(--orange-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        pre code {
+            color: var(--text-secondary);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--orange-primary);
+            text-align: left;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.75rem;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        /* ASCII diagrams - FIXED */
+        .diagram {
+            background: var(--bg-primary);
+            border: 1px solid var(--orange-dim);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            overflow-x: auto;
+            font-size: 0.75rem;
+            line-height: 1.3;
+            color: var(--orange-secondary);
+            position: relative;
+            white-space: pre;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .diagram::before {
+            content: '┌─ DIAGRAM';
+            position: absolute;
+            top: -0.7rem;
+            left: 1rem;
+            background: var(--bg-primary);
+            padding: 0 0.5rem;
+            color: var(--orange-dim);
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 1rem 0 1rem 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin: 0.5rem 0;
+            padding-left: 0.5rem;
+        }
+
+        li::marker {
+            color: var(--orange-primary);
+        }
+
+        /* Inline highlights */
+        .highlight {
+            color: var(--orange-primary);
+            font-weight: 500;
+        }
+
+        /* Section number */
+        .section-num {
+            display: inline-block;
+            width: 2.5rem;
+            height: 2.5rem;
+            line-height: 2.5rem;
+            text-align: center;
+            background: var(--orange-primary);
+            color: var(--bg-primary);
+            font-weight: 700;
+            margin-right: 1rem;
+            font-size: 1rem;
+        }
+
+        /* Blockquote */
+        blockquote {
+            border-left: 3px solid var(--orange-primary);
+            padding: 1rem 1.5rem;
+            margin: 2rem 0;
+            background: var(--orange-glow);
+            color: var(--text-primary);
+            font-style: italic;
+        }
+
+        /* Formula blocks */
+        .formula {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-highlight);
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-size: 1rem;
+            color: var(--orange-secondary);
+        }
+
+        /* Grid layouts */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin: 2rem 0;
+        }
+
+        .three-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        /* Metric box */
+        .metric-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .metric-box .value {
+            font-size: 2.5rem;
+            color: var(--orange-primary);
+            font-weight: 700;
+        }
+
+        .metric-box .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0.5rem;
+        }
+
+        /* Progress bars */
+        .progress-item {
+            margin: 1rem 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--orange-dim), var(--orange-primary));
+        }
+
+        /* Pipeline visualization */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 2rem 0;
+        }
+
+        .pipeline-stage {
+            display: flex;
+            align-items: stretch;
+            position: relative;
+        }
+
+        .pipeline-label {
+            width: 120px;
+            flex-shrink: 0;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--orange-primary);
+            font-weight: 600;
+        }
+
+        .pipeline-content {
+            flex: 1;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pipeline-box {
+            background: var(--bg-primary);
+            border: 2px solid var(--orange-dim);
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .pipeline-box.highlight-box {
+            border-color: var(--orange-primary);
+            box-shadow: 0 0 20px rgba(255, 107, 0, 0.2);
+        }
+
+        .pipeline-box .box-title {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .pipeline-box .box-value {
+            font-size: 1rem;
+            color: var(--orange-primary);
+            font-weight: 600;
+        }
+
+        .pipeline-arrow {
+            color: var(--orange-primary);
+            font-size: 1.5rem;
+            padding: 0 0.5rem;
+        }
+
+        /* Comparison boxes */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+            align-items: start;
+        }
+
+        .comparison-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+        }
+
+        .comparison-box.bad {
+            border-color: #ff4444;
+        }
+
+        .comparison-box.good {
+            border-color: var(--orange-primary);
+        }
+
+        .comparison-box h4 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-box.bad h4 {
+            color: #ff6666;
+        }
+
+        .comparison-box.good h4 {
+            color: var(--orange-primary);
+        }
+
+        .comparison-vs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .comparison-box ol {
+            margin-left: 1.2rem;
+        }
+
+        .comparison-box li {
+            margin: 0.75rem 0;
+            font-size: 0.85rem;
+        }
+
+        /* Flow steps */
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+
+        .flow-step .step-num {
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            background: var(--orange-dim);
+            color: var(--bg-primary);
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+
+        .flow-step.bottleneck .step-num {
+            background: #ff4444;
+        }
+
+        .flow-step.fast .step-num {
+            background: var(--orange-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--orange-dim);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--orange-primary);
+        }
+
+        /* Appendix styles */
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 0.5rem 2rem;
+            margin: 1rem 0;
+        }
+
+        .glossary-term {
+            color: var(--orange-primary);
+            font-weight: 600;
+        }
+
+        .glossary-def {
+            color: var(--text-secondary);
+        }
+
+        /* Animation */
+        @keyframes glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .pulse {
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        /* Footer */
+        footer {
+            padding: 4rem;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        footer .logo {
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .slide {
+                padding: 6rem 2rem 3rem;
+            }
+
+            .title-slide h1 {
+                font-size: 2.5rem;
+            }
+
+            .key-results {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .two-col, .three-col, .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .pipeline-stage {
+                flex-direction: column;
+            }
+
+            .pipeline-label {
+                width: 100%;
+            }
+
+            .pipeline-content {
+                border-left: 1px solid var(--border-color);
+                border-top: none;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo">ULTRALASSO</div>
+    <div class="nav-links">
+        <a href="#pipeline">Pipeline</a>
+        <a href="#challenge">Challenge</a>
+        <a href="#format">Format</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#results">Results</a>
+    </div>
+</nav>
+
+<!-- Title Slide -->
+<section class="slide title-slide">
+    <div class="slide-content">
+        <h1>UltraLasso</h1>
+        <p class="acronym">
+            <span>U</span>ltra-fast <span>L</span>arge-scale <span>T</span>ensor-accelerated <span>R</span>egression <span>A</span>rchitecture based on <span>LASSO</span>
+        </p>
+        <p class="subtitle">GPU-Accelerated Genome-Wide Sparse Regression</p>
+        <p class="authors">
+            <strong>Tuomo Kiiskinen</strong> & <strong>Claude Code</strong><br>
+            January 2026 · Version 1.0
+        </p>
+        
+        <div class="key-results">
+            <div class="result-card">
+                <div class="value">28-46×</div>
+                <div class="label">Speedup</div>
+            </div>
+            <div class="result-card">
+                <div class="value">6-10 min</div>
+                <div class="label">Runtime</div>
+            </div>
+            <div class="result-card">
+                <div class="value">1.06M</div>
+                <div class="label">Variants</div>
+            </div>
+            <div class="result-card">
+                <div class="value">0.6935</div>
+                <div class="label">Test R²</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pipeline Overview -->
+<section class="slide" id="pipeline">
+    <div class="slide-content">
+        <h2><span class="section-num">0</span>Pipeline Overview</h2>
+        
+        <p>UltraLasso transforms raw genotype data into polygenic risk scores through a GPU-accelerated three-step pipeline:</p>
+
+        <div class="pipeline">
+            <div class="pipeline-stage">
+                <div class="pipeline-label">Input</div>
+                <div class="pipeline-content">
+                    <div class="pipeline-box">
+                        <div class="box-title">PGEN Files</div>
+                        <div class="box-value">~150 GB</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box highlight-box">
+                        <div class="box-title">Convert to</div>
+                        <div class="box-value">.cupgen</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">GPU-Native</div>
+                        <div class="box-value">~62 GB</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pipeline-stage">
+                <div class="pipeline-label">Step 1+2<br><small>Per Chr</small></div>
+                <div class="pipeline-content">
+                    <div class="pipeline-box">
+                        <div class="box-title">Stream</div>
+                        <div class="box-value">~50K SNPs</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">Univariate</div>
+                        <div class="box-value">β̂, SE, LOO</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">Top-K Select</div>
+                        <div class="box-value">Chainsaw</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box highlight-box">
+                        <div class="box-title">LASSO</div>
+                        <div class="box-value">~1-2K kept</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pipeline-stage">
+                <div class="pipeline-label">Step 3<br><small>Genome</small></div>
+                <div class="pipeline-content">
+                    <div class="pipeline-box">
+                        <div class="box-title">Collect</div>
+                        <div class="box-value">22 × Chr</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">Load Selected</div>
+                        <div class="box-value">~25K SNPs</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box highlight-box">
+                        <div class="box-title">Joint LASSO</div>
+                        <div class="box-value">+ Covariates</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pipeline-stage">
+                <div class="pipeline-label">Output</div>
+                <div class="pipeline-content">
+                    <div class="pipeline-box highlight-box">
+                        <div class="box-title">PRS Model</div>
+                        <div class="box-value">~25K weights</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">Test R²</div>
+                        <div class="box-value">0.6935</div>
+                    </div>
+                    <span class="pipeline-arrow">→</span>
+                    <div class="pipeline-box">
+                        <div class="box-title">Total Time</div>
+                        <div class="box-value">6.4 min</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Key Innovations</h3>
+        <div class="three-col">
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.5rem;">.cupgen</div>
+                <div class="label">GPU-Native Format</div>
+            </div>
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.5rem;">Chainsaw</div>
+                <div class="label">SE-Weighted Selection</div>
+            </div>
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.5rem;">Streaming</div>
+                <div class="label">Memory-Efficient</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section 1: The Computational Challenge -->
+<section class="slide" id="challenge">
+    <div class="slide-content">
+        <h2><span class="section-num">1</span>The Computational Challenge</h2>
+        
+        <h3>1.1 The UniLasso Algorithm</h3>
+        <p>UniLasso (Univariate-Guided Sparse Regression) is a two-stage penalized regression procedure that promotes sparsity by constraining multivariate coefficients to align with their univariate counterparts.</p>
+        
+        <div class="diagram"><strong>Step 1 (Univariate):</strong> For each SNP j = 1, ..., p, compute:
+  • Univariate intercept and slope (β̂₀ⱼ, β̂ⱼ)
+  • Leave-one-out (LOO) fitted values: ŷᵢⱼ⁻ⁱ = β̂₀ⱼ⁻ⁱ + β̂ⱼ⁻ⁱ xᵢⱼ
+  • Collect in feature matrix F where Fᵢⱼ = ŷᵢⱼ⁻ⁱ
+
+<strong>Step 2 (Non-Negative LASSO):</strong> Fit constrained LASSO on LOO matrix:
+  argmin_θ { (1/n) Σᵢ (yᵢ - θ₀ - Σⱼ Fᵢⱼ θⱼ)² + λ Σⱼ θⱼ }
+  subject to θⱼ ≥ 0
+
+<strong>Step 3 (Final Model):</strong> γ̂ⱼ = β̂ⱼ θ̂ⱼ</div>
+
+        <h3>1.2 The Memory Wall</h3>
+        <p>The critical bottleneck is the <strong>LOO matrix F</strong>:</p>
+        
+        <div class="formula">
+            Memory for F = n × p × 4 bytes (float32)
+        </div>
+        
+        <div class="two-col">
+            <div>
+                <h4>UK Biobank Scale</h4>
+                <ul>
+                    <li>n = 336,442 samples</li>
+                    <li>p = 1,080,968 variants</li>
+                    <li><strong class="highlight">Memory = 1,456 GB (1.4 TB!)</strong></li>
+                </ul>
+            </div>
+            <div>
+                <h4>This Exceeds</h4>
+                <ul>
+                    <li>GPU memory: 80 GB — by <strong>18×</strong></li>
+                    <li>Typical CPU RAM: 512 GB — by <strong>3×</strong></li>
+                    <li>High-memory nodes: 1 TB — by <strong>1.5×</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>1.3 Computational Complexity</h3>
+        <table>
+            <tr>
+                <th>Stage</th>
+                <th>Complexity</th>
+                <th>FLOPs</th>
+            </tr>
+            <tr>
+                <td>Step 1: Univariate</td>
+                <td>O(n × p)</td>
+                <td>~364 billion</td>
+            </tr>
+            <tr>
+                <td>Step 2: Full LOO LASSO</td>
+                <td>O(n × p²)</td>
+                <td>~1.2 × 10¹⁸ (intractable)</td>
+            </tr>
+            <tr>
+                <td>I/O</td>
+                <td>—</td>
+                <td>~150 GB genotype data</td>
+            </tr>
+        </table>
+        
+        <div class="two-col" style="margin-top: 2rem;">
+            <div class="metric-box">
+                <div class="value">3-5 hrs</div>
+                <div class="label">CPU Baseline (64 cores)</div>
+            </div>
+            <div class="metric-box">
+                <div class="value">&lt; 10 min</div>
+                <div class="label">Our Target</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section 2: Why GPUs -->
+<section class="slide" id="gpu">
+    <div class="slide-content">
+        <h2><span class="section-num">2</span>Why GPUs? A Primer on Parallel Computing</h2>
+        
+        <h3>2.1 CPU vs GPU Architecture</h3>
+        
+        <div class="two-col">
+            <div class="comparison-box">
+                <h4>CPU (Intel Xeon)</h4>
+                <div class="diagram" style="font-size: 0.7rem; margin: 1rem 0; padding: 1rem;">┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐   ┌─────┐
+│ C1  │ │ C2  │ │ C3  │ │ C4  │...│ C64 │
+└─────┘ └─────┘ └─────┘ └─────┘   └─────┘
+         <span style="color: var(--text-muted);">32-64 complex cores</span></div>
+                <ul style="font-size: 0.8rem;">
+                    <li>Complex, out-of-order execution</li>
+                    <li>Optimized for single-thread</li>
+                    <li>Clock: ~3 GHz</li>
+                    <li>Bandwidth: ~200 GB/s</li>
+                </ul>
+            </div>
+            <div class="comparison-box good">
+                <h4>GPU (NVIDIA H100)</h4>
+                <div class="diagram" style="font-size: 0.7rem; margin: 1rem 0; padding: 1rem;">┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐...
+└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘
+┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐┌┐...
+└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘└┘
+   <span style="color: var(--text-muted);">16,896 CUDA cores in 132 SMs</span></div>
+                <ul style="font-size: 0.8rem;">
+                    <li>Simple, in-order execution</li>
+                    <li>Optimized for throughput</li>
+                    <li>Clock: ~1.8 GHz</li>
+                    <li>Bandwidth: <strong class="highlight">~3,350 GB/s</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>2.2 The SIMD Paradigm</h3>
+        <p>GPUs excel at <strong>Single Instruction, Multiple Data (SIMD)</strong> operations:</p>
+        
+        <pre><code>CPU approach (sequential):
+  for i in range(235503):      # Loop over samples
+      result[i] = x[i] * y[i]  # One multiplication per cycle
+  Time: 235,503 cycles
+
+GPU approach (parallel):
+  # Launch 235,503 threads simultaneously
+  result = x * y  # All multiplications in ~1 cycle
+  Time: ~1 cycle (+ memory latency)</code></pre>
+
+        <h3>2.3 Memory Bandwidth: The Real Bottleneck</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>CPU (Xeon)</th>
+                <th>GPU (H100)</th>
+                <th>Ratio</th>
+            </tr>
+            <tr>
+                <td>Peak FLOPs (FP32)</td>
+                <td>~2 TFLOPS</td>
+                <td>~60 TFLOPS</td>
+                <td>30×</td>
+            </tr>
+            <tr>
+                <td>Memory Bandwidth</td>
+                <td>~200 GB/s</td>
+                <td>~3,350 GB/s</td>
+                <td class="highlight">17×</td>
+            </tr>
+            <tr>
+                <td>Memory Capacity</td>
+                <td>512 GB</td>
+                <td>80 GB</td>
+                <td>0.16×</td>
+            </tr>
+        </table>
+
+        <h3>2.4 When GPUs Excel</h3>
+        <p>GPUs provide maximum benefit when:</p>
+        <ol>
+            <li><strong>Same operation on many data points</strong> (SIMD) ✓</li>
+            <li><strong>High arithmetic intensity</strong> (FLOPs per byte) ✓</li>
+            <li><strong>Predictable memory access patterns</strong> ✓</li>
+            <li><strong>Large batch sizes</strong> (amortize kernel launch overhead) ✓</li>
+        </ol>
+        <p><em>Univariate regression across 1M SNPs satisfies ALL of these criteria.</em></p>
+    </div>
+</section>
+
+<!-- Section 3: Embarrassingly Parallel -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">3</span>The Embarrassingly Parallel Step 1</h2>
+        
+        <h3>3.1 What Makes a Problem "Embarrassingly Parallel"?</h3>
+        <p>A problem is <strong>embarrassingly parallel</strong> when it can be divided into independent subproblems with:</p>
+        <ul>
+            <li><strong>No communication</strong> between subproblems</li>
+            <li><strong>No shared state</strong> that requires synchronization</li>
+            <li><strong>Identical computation</strong> on different data</li>
+        </ul>
+
+        <div class="diagram"><strong>STEP 1: EMBARRASSINGLY PARALLEL</strong>
+
+SNP 1:  y ~ x₁  →  (β̂₀₁, β̂₁, LOO₁)     ← Independent!
+SNP 2:  y ~ x₂  →  (β̂₀₂, β̂₂, LOO₂)     ← Independent!
+SNP 3:  y ~ x₃  →  (β̂₀₃, β̂₃, LOO₃)     ← Independent!
+...
+SNP p:  y ~ xₚ  →  (β̂₀ₚ, β̂ₚ, LOOₚ)     ← Independent!
+
+Each regression depends ONLY on:
+  • Column xⱼ (genotypes for SNP j)
+  • Vector y (phenotype, shared read-only)
+
+No SNP needs results from any other SNP!</div>
+
+        <h3>3.2 Closed-Form Univariate Statistics</h3>
+        <pre><code># Slope (effect size)
+β₁ = (x̃ᵀỹ) / (x̃ᵀx̃) = Σᵢ(xᵢ - x̄)(yᵢ - ȳ) / Σᵢ(xᵢ - x̄)²
+
+# Intercept
+β₀ = ȳ - β₁x̄
+
+# Standard error
+SE(β₁) = √(σ²ᵧ / (n × Sₓₓ))  where Sₓₓ = x̃ᵀx̃</code></pre>
+
+        <h3>3.3 Leave-One-Out in O(1)</h3>
+        <p>The LOO fitted values have a closed form (no refitting needed!):</p>
+        <pre><code># Hat matrix diagonal
+Hᵢᵢ = 1/n + x̃ᵢ² / Sₓₓ
+
+# LOO residual (Sherman-Morrison formula)
+eᵢ⁽⁻ⁱ⁾ = (yᵢ - ŷᵢ) / (1 - Hᵢᵢ)
+
+# LOO fitted value
+ŷᵢ⁽⁻ⁱ⁾ = yᵢ - eᵢ⁽⁻ⁱ⁾</code></pre>
+        <p><strong class="highlight">Crucial:</strong> We compute LOO values in O(n) per SNP, not O(n²) from naive refitting.</p>
+
+        <h3>3.4 Theoretical vs Achieved Parallelism</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Total SNPs</td>
+                <td>1,059,798</td>
+            </tr>
+            <tr>
+                <td>GPU cores (H100)</td>
+                <td>16,896</td>
+            </tr>
+            <tr>
+                <td>Parallel waves needed</td>
+                <td>63</td>
+            </tr>
+            <tr>
+                <td>Theoretical time</td>
+                <td class="highlight">42 ms</td>
+            </tr>
+            <tr>
+                <td>Achieved time</td>
+                <td>~30 seconds</td>
+            </tr>
+        </table>
+        <p><em>The 700× gap is due to memory bandwidth, kernel launch overhead, and I/O.</em></p>
+    </div>
+</section>
+
+<!-- Section 4: The PGEN Problem -->
+<section class="slide" id="format">
+    <div class="slide-content">
+        <h2><span class="section-num">4</span>The PGEN Problem: Why Standard Formats Fail</h2>
+        
+        <h3>4.1 Standard Genomic File Formats</h3>
+        <table>
+            <tr>
+                <th>Format</th>
+                <th>Encoding</th>
+                <th>Compression</th>
+                <th>Access Pattern</th>
+            </tr>
+            <tr>
+                <td>VCF</td>
+                <td>Text</td>
+                <td>gzip</td>
+                <td>Sequential</td>
+            </tr>
+            <tr>
+                <td>BGEN</td>
+                <td>Probabilistic</td>
+                <td>zlib</td>
+                <td>Random</td>
+            </tr>
+            <tr>
+                <td class="highlight">PGEN</td>
+                <td>Variable-length</td>
+                <td>Custom</td>
+                <td>Random</td>
+            </tr>
+        </table>
+
+        <h3>4.2 Why PGEN Fails for GPUs</h3>
+
+        <div class="comparison">
+            <div class="comparison-box bad">
+                <h4>❌ PGEN Reading Pipeline</h4>
+                <div class="flow-step">
+                    <span class="step-num">1</span>
+                    <span>Read compressed bytes from disk (I/O)</span>
+                </div>
+                <div class="flow-step bottleneck">
+                    <span class="step-num">2</span>
+                    <span><strong>CPU decompression</strong> — variable-length decode (SERIAL!)</span>
+                </div>
+                <div class="flow-step bottleneck">
+                    <span class="step-num">3</span>
+                    <span><strong>Convert to float32</strong> — 2-bit → 32-bit (16× expansion)</span>
+                </div>
+                <div class="flow-step">
+                    <span class="step-num">4</span>
+                    <span>Transfer to GPU via PCIe (~25 GB/s)</span>
+                </div>
+                <div class="flow-step">
+                    <span class="step-num">5</span>
+                    <span>GPU computation</span>
+                </div>
+                <p style="margin-top: 1rem; color: #ff6666; font-size: 0.85rem;">
+                    <strong>Bottleneck:</strong> Steps 2-3 are CPU-bound and serial.<br>
+                    Time: 30-60 seconds minimum (exceeds target!)
+                </p>
+            </div>
+            
+            <div class="comparison-vs">VS</div>
+            
+            <div class="comparison-box good">
+                <h4>✓ .cupgen Reading Pipeline</h4>
+                <div class="flow-step fast">
+                    <span class="step-num">1</span>
+                    <span><strong>Sequential NVMe read</strong> — 5-7 GB/s streaming</span>
+                </div>
+                <div class="flow-step fast">
+                    <span class="step-num">2</span>
+                    <span><strong>Direct to GPU</strong> — packed 2-bit stays packed</span>
+                </div>
+                <div class="flow-step fast">
+                    <span class="step-num">3</span>
+                    <span><strong>GPU kernel unpack</strong> — 16,896 cores parallel decode</span>
+                </div>
+                <div class="flow-step fast">
+                    <span class="step-num">4</span>
+                    <span><strong>Pre-computed stats</strong> — μ, Sₓₓ, MAF ready to use</span>
+                </div>
+                <p style="margin-top: 1rem; color: var(--orange-primary); font-size: 0.85rem;">
+                    <strong>No CPU bottleneck!</strong><br>
+                    Time: ~5 seconds for 50K variants
+                </p>
+            </div>
+        </div>
+
+        <h3>4.3 The Three Core Problems</h3>
+        
+        <div class="three-col">
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.2rem;">Variable<br>Length</div>
+                <div class="label">GPU needs fixed stride</div>
+            </div>
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.2rem;">CPU<br>Decode</div>
+                <div class="label">Serializes the pipeline</div>
+            </div>
+            <div class="metric-box">
+                <div class="value" style="font-size: 1.2rem;">16×<br>Expansion</div>
+                <div class="label">2-bit → 32-bit float</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section 5: The .cupgen Format -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">5</span>The .cupgen Format: GPU-Native Genotypes</h2>
+        
+        <h3>5.1 Design Principles</h3>
+        <p>We designed <code>.cupgen</code> (CUDA-optimized Packed GENotypes) to solve each PGEN problem:</p>
+
+        <table>
+            <tr>
+                <th>PGEN Problem</th>
+                <th>cupgen Solution</th>
+                <th>Why It Helps GPU</th>
+            </tr>
+            <tr>
+                <td>Variable-length encoding</td>
+                <td><strong>Fixed stride</strong> — same bytes per variant</td>
+                <td>O(1) offset calculation for any variant</td>
+            </tr>
+            <tr>
+                <td>CPU decompression</td>
+                <td><strong>GPU-decodable</strong> — simple 2-bit unpack</td>
+                <td>16,896 cores decode in parallel</td>
+            </tr>
+            <tr>
+                <td>Random access pattern</td>
+                <td><strong>Variant-major layout</strong> — sequential</td>
+                <td>NVMe optimal: 5-7 GB/s streaming</td>
+            </tr>
+            <tr>
+                <td>Compute stats each read</td>
+                <td><strong>Pre-computed</strong> — μ, Sₓₓ, MAF stored</td>
+                <td>~40% less Step 1 computation</td>
+            </tr>
+        </table>
+
+        <h3>5.2 File Format Specification</h3>
+        <div class="diagram"><strong>.cupgen FILE STRUCTURE</strong>
+
+HEADER (256 bytes)
+├── Magic: "CUPGEN01" (8 bytes)
+├── Version: uint32
+├── Encoding: uint32 (0=2bit, 1=4bit, 2=8bit, 3=float32)
+├── n_samples: uint64
+├── n_variants: uint64
+├── bytes_per_variant: uint64
+└── flags: uint32
+
+STATISTICS (12 bytes × n_variants)
+├── mu_x[j]: float32 (mean dosage)
+├── sxx[j]: float32 (sum of squared deviations)
+└── maf[j]: float32 (minor allele frequency)
+
+GENOTYPE DATA (bytes_per_variant × n_variants)
+└── Packed 2-bit genotypes, variant-major order
+    Each variant: ceil(n_samples / 4) bytes
+    4 samples per byte: [s₀:2][s₁:2][s₂:2][s₃:2]
+    Values: 0=hom_ref, 1=het, 2=hom_alt, 3=missing</div>
+
+        <h3>5.3 Fixed Stride: The Key Innovation</h3>
+        <pre><code>bytes_per_variant = ceil(n_samples / 4)  # 2 bits × n_samples
+
+# For UK Biobank: ceil(235503 / 4) = 58,876 bytes per variant
+
+# GPU can compute offset for ANY variant in O(1):
+offset = data_offset + variant_idx * bytes_per_variant
+
+# Compare to PGEN: must scan from start to find variant offset!</code></pre>
+
+        <h3>5.4 Performance Comparison</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>PGEN</th>
+                <th>.cupgen</th>
+                <th>Improvement</th>
+            </tr>
+            <tr>
+                <td>File size (235K × 80K)</td>
+                <td>~18 GB</td>
+                <td>~4.7 GB</td>
+                <td class="highlight">3.8× smaller</td>
+            </tr>
+            <tr>
+                <td>Decode location</td>
+                <td>CPU (serial)</td>
+                <td>GPU (parallel)</td>
+                <td>No CPU bottleneck</td>
+            </tr>
+            <tr>
+                <td>Read pattern</td>
+                <td>Random</td>
+                <td>Sequential</td>
+                <td class="highlight">NVMe optimal</td>
+            </tr>
+            <tr>
+                <td>Decode throughput</td>
+                <td>~50 MB/s</td>
+                <td>~5 GB/s</td>
+                <td class="highlight">100× faster</td>
+            </tr>
+            <tr>
+                <td>Stats computation</td>
+                <td>Every read</td>
+                <td>Pre-computed</td>
+                <td>~40% savings</td>
+            </tr>
+        </table>
+    </div>
+</section>
+
+<!-- Section 6: Multi-Step Architecture -->
+<section class="slide" id="architecture">
+    <div class="slide-content">
+        <h2><span class="section-num">6</span>Multi-Step Architecture: Decomposing the Impossible</h2>
+        
+        <h3>6.1 The Core Insight</h3>
+        <blockquote>
+            <strong>LD is primarily a within-chromosome phenomenon.</strong><br>
+            SNPs on chromosome 1 are not in LD with SNPs on chromosome 22. Therefore, per-chromosome LASSO captures most LD-induced correlation structure.
+        </blockquote>
+
+        <h3>6.2 The Decomposition</h3>
+        <div class="diagram"><strong>ORIGINAL UNILASSO (INFEASIBLE)</strong>
+
+Step 1: Build full LOO matrix F (n × p)     → 1.4 TB (NO!)
+Step 2: LASSO on F                          → Infeasible
+
+                         ↓ DECOMPOSE
+
+<strong>ULTRALASSO GPU IMPLEMENTATION</strong>
+
+PER-CHROMOSOME (22 iterations, parallelizable):
+┌───────────────────────────────────────────────────────────┐
+│  Step 1: Stream genotypes, compute univariate stats       │
+│  Step 2: Build LOO for Top-K only (~5K SNPs)             │
+│          Memory: 5K × 235K × 4 = 4.7 GB ✓                │
+│          Run per-chr LASSO → ~2-4K selected              │
+└───────────────────────────────────────────────────────────┘
+
+GENOME-WIDE (once):
+┌───────────────────────────────────────────────────────────┐
+│  Step 3: Load all selected SNPs (~25-50K)                 │
+│          Joint LASSO with covariates                      │
+│          Captures inter-chromosomal effects               │
+│          Final PRS coefficients                           │
+└───────────────────────────────────────────────────────────┘</div>
+
+        <h3>6.3 Memory Budget Analysis</h3>
+        <pre><code>GPU Memory (H100): 80 GB
+
+Per-chromosome Step 1+2:
+  Genotypes buffer:    5K SNPs × 235K samples × 4 bytes = 4.7 GB
+  LOO matrix:          5K SNPs × 235K samples × 4 bytes = 4.7 GB
+  Working memory:      ~5 GB
+  TOTAL:               ~15 GB per chromosome ✓
+
+Step 3 (genome-wide):
+  Selected SNPs:       50K SNPs × 235K samples × 4 bytes = 47 GB
+  XᵀX matrix:          50K × 50K × 4 bytes = 10 GB
+  Working memory:      ~15 GB
+  TOTAL:               ~72 GB ✓ (fits in H100!)
+
+Maximum safe:          ~55K SNPs (with margin)</code></pre>
+
+        <h3>6.4 The Streaming Fused Pipeline</h3>
+        <div class="diagram"><strong>FUSED STEP 1+2 PIPELINE</strong>
+
+┌──────────┐
+│ .cupgen  │
+│   file   │
+└────┬─────┘
+     │ Stream blocks of 4096 variants
+     ▼
+┌────────────────────────────────────────────────────────────┐
+│              GPU: Per-block processing                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   Unpack    │→ │  Compute    │→ │  Update     │         │
+│  │  2-bit→f32  │  │ univariate  │  │  Top-K      │         │
+│  │             │  │   stats     │  │  buffer     │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└────────────────────────────────────────────────────────────┘
+     │
+     │ After all blocks processed
+     ▼
+┌────────────────────────────────────────────────────────────┐
+│              GPU: Top-K LASSO                               │
+│  1. Build LOO matrix for Top-K SNPs only                   │
+│  2. Run FISTA positive LASSO                               │
+│  3. Select SNPs with θⱼ > 0                                │
+└────────────────────────────────────────────────────────────┘
+     │
+     ▼
+┌──────────┐
+│ Selected │  (gidx, coefficients, statistics)
+│   SNPs   │
+└──────────┘</div>
+    </div>
+</section>
+
+<!-- Section 7: Chainsaw Shrinkage -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">7</span>Chainsaw Shrinkage: Pseudo-Bayesian SNP Selection</h2>
+        
+        <h3>7.1 The Winner's Curse Problem</h3>
+        <p>In high-dimensional regression, <strong>winner's curse</strong> causes systematic overestimation:</p>
+        
+        <div class="diagram">True effect:     β_true = 0.01 (small but real)
+Observed effect: β̂ = 0.05 (inflated by noise)
+Selection rule:  Keep if |β̂| > threshold
+
+Problem: SNPs selected because β̂ is large may have:
+  • Large true effect (good!)
+  • Small true effect + favorable noise (bad!)
+  • Zero true effect + unlucky noise (very bad!)</div>
+
+        <h3>7.2 The Original Strength Formula (Buggy)</h3>
+        <pre><code>strength = |β̂|  # WRONG!
+
+Example:
+  Common variant (MAF=0.3): β̂=0.02, SE=0.001 → |β̂|=0.02
+  Rare variant (MAF=0.01):  β̂=0.10, SE=0.05  → |β̂|=0.10 ← Selected!
+
+  The rare variant "wins" despite being 50× less reliable.</code></pre>
+
+        <h3>7.3 The Chainsaw Shrinkage Formula</h3>
+        <div class="formula">
+            strength = β̂² × MAF × (1 - MAF) × n × Sₓₓ / Sᵧᵧ
+        </div>
+        
+        <p><strong>Decomposition:</strong></p>
+        <pre><code>strength = (β̂² × MAF × (1-MAF))  ×  (n × Sₓₓ / Sᵧᵧ)
+           ├─────────────────┤     ├────────────────┤
+           Explained variance      1 / SE²
+           (r² component)          (precision weight)
+
+This is equivalent to:  strength = r² / SE²
+                                 = (explained variance) × (inverse uncertainty)</code></pre>
+
+        <h3>7.4 Why "Chainsaw"?</h3>
+        <div class="diagram"><strong>CHAINSAW SHRINKAGE IN ACTION</strong>
+
+Input: 1M SNPs with varying β̂ and SE
+
+Traditional |β̂| selection:
+  High β̂ winners: mix of real signals + lucky noise
+  Many rare variants selected (unstable!)
+
+Chainsaw (β̂²×MAF×(1-MAF)/SE²) selection:
+  ████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░
+  ↑                               ↑
+  Real signals survive            Noisy estimates cut
+  (high r², low SE)               (high SE, low MAF)
+
+Effect on rare variants:
+  MAF=0.01 → multiplier = 0.01×0.99 = 0.0099
+  MAF=0.30 → multiplier = 0.30×0.70 = 0.21
+  Rare variant needs 21× higher β̂² to compete!</div>
+
+        <h3>7.5 Empirical Validation</h3>
+        <table>
+            <tr>
+                <th>Formula</th>
+                <th>Test R²</th>
+                <th>Train-Test Gap</th>
+                <th>Note</th>
+            </tr>
+            <tr>
+                <td>|β̂| (original)</td>
+                <td>0.661</td>
+                <td>0.088</td>
+                <td>Winner's curse</td>
+            </tr>
+            <tr>
+                <td class="highlight">β̂²×MAF×(1-MAF)/SE²</td>
+                <td class="highlight">0.6935</td>
+                <td>0.093</td>
+                <td class="highlight">+3.2% improvement</td>
+            </tr>
+        </table>
+    </div>
+</section>
+
+<!-- Section 8: GPU Kernel Design -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">8</span>GPU Kernel Design</h2>
+        
+        <h3>8.1 Kernel Architecture Overview</h3>
+        <p>We implement three main GPU kernels:</p>
+        <ol>
+            <li><strong>Unpack kernel:</strong> 2-bit → float32 conversion</li>
+            <li><strong>Univariate kernel:</strong> Statistics computation</li>
+            <li><strong>FISTA kernel:</strong> LASSO optimization</li>
+        </ol>
+
+        <h3>8.2 Fused Univariate Kernel</h3>
+        <pre><code>__global__ void fused_univariate(
+    const uint8_t* packed,      // 2-bit packed genotypes
+    const float* y_centered,    // Centered phenotype (n,)
+    const float* mu_x,          // Pre-computed means (p,)
+    const float* sxx,           // Pre-computed Sₓₓ (p,)
+    float* num_out,             // Output: Σ(x-μ)y per variant
+    int64_t n_samples, int64_t n_variants, int64_t bytes_per_variant
+) {
+    // Each thread handles one variant (embarrassingly parallel!)
+    int64_t var_idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (var_idx >= n_variants) return;
+
+    float mu = mu_x[var_idx];
+    float num = 0.0f;
+
+    for (int64_t s = 0; s < n_samples; s++) {
+        // Unpack genotype for sample s, variant var_idx
+        int64_t byte_idx = s / 4;
+        int bit_shift = 6 - 2 * (s % 4);
+        int64_t packed_offset = var_idx * bytes_per_variant + byte_idx;
+        uint8_t byte_val = packed[packed_offset];
+        uint8_t geno = (byte_val >> bit_shift) & 0x03;
+
+        // Handle missing (3) as mean imputation
+        float x = (geno == 3) ? mu : (float)geno;
+        num += (x - mu) * y_centered[s];
+    }
+    num_out[var_idx] = num;
+}</code></pre>
+
+        <p><strong>Key optimization:</strong> We never materialize the float32 genotype matrix. <span class="highlight">Memory savings: 16×</span></p>
+
+        <h3>8.3 Memory Coalescing</h3>
+        <div class="two-col">
+            <div class="comparison-box bad">
+                <h4>❌ Bad (Strided)</h4>
+                <pre style="font-size: 0.75rem;">Thread 0 → addr 0x1000
+Thread 1 → addr 0x2000
+Thread 2 → addr 0x3000
+...
+→ 32 separate transactions
+→ 32× slower!</pre>
+            </div>
+            <div class="comparison-box good">
+                <h4>✓ Good (Coalesced)</h4>
+                <pre style="font-size: 0.75rem;">Thread 0 → addr 0x1000
+Thread 1 → addr 0x1004
+Thread 2 → addr 0x1008
+...
+→ 1 memory transaction
+→ Maximum bandwidth</pre>
+            </div>
+        </div>
+        <p>Our variant-major layout ensures coalesced access when threads process different samples of the same variant.</p>
+    </div>
+</section>
+
+<!-- Section 9: Memory Hierarchy -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">9</span>Memory Hierarchy and Data Flow</h2>
+        
+        <h3>9.1 Storage Hierarchy</h3>
+        <div class="diagram"><strong>MEMORY HIERARCHY</strong>
+
+┌─────────────────────────────────────────────────────────┐
+│  Network Storage (OAK/Lustre)                           │
+│  Capacity: Petabytes     Bandwidth: ~500 MB/s           │
+└─────────────────────────────────────────────────────────┘
+                    │ Stage once at job start
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│  Local NVMe Scratch ($SCRATCH)                          │
+│  Capacity: ~1 TB         Bandwidth: ~5-7 GB/s           │
+└─────────────────────────────────────────────────────────┘
+                    │ Stream during processing
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│  CPU RAM                                                │
+│  Capacity: 128-512 GB    Bandwidth: ~200 GB/s           │
+└─────────────────────────────────────────────────────────┘
+                    │ PCIe 4.0 transfer
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│  GPU HBM3 Memory                                        │
+│  Capacity: 80 GB         Bandwidth: ~3,350 GB/s         │
+└─────────────────────────────────────────────────────────┘
+                    │ On-chip access
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│  GPU Registers + Shared Memory                          │
+│  Capacity: ~256 KB/SM    Bandwidth: ~20 TB/s            │
+└─────────────────────────────────────────────────────────┘</div>
+
+        <h3>9.2 Data Flow: Index-Based Architecture (V11c)</h3>
+        <p>Our latest architecture avoids intermediate .npy files:</p>
+        
+        <div class="diagram"><strong>INDEX-BASED DATA FLOW (V11c)</strong>
+
+STEP 1+2 (per chromosome):
+┌─────────────────────────────────────────────────────────┐
+│  .cupgen ─→ Stream ─→ Compute ─→ Select ─→ .feather     │
+│                                           (gidx only!)  │
+│  NO .npy files saved!                                   │
+└─────────────────────────────────────────────────────────┘
+
+STEP 3 (genome-wide):
+┌─────────────────────────────────────────────────────────┐
+│  For each chromosome:                                   │
+│    1. Read gidx from .feather                           │
+│    2. Open .cupgen                                      │
+│    3. Build gidx → local_idx mapping                    │
+│    4. Extract selected genotypes to GPU                 │
+│    5. Append to combined matrix                         │
+│                                                         │
+│  Then: Run joint LASSO on combined matrix               │
+└─────────────────────────────────────────────────────────┘
+
+Benefits:
+• No .npy files: saves ~10 GB disk per run
+• Faster I/O: cupgen already optimized for streaming
+• Simpler workflow: fewer files to manage</div>
+    </div>
+</section>
+
+<!-- Section 10: Performance Analysis -->
+<section class="slide" id="results">
+    <div class="slide-content">
+        <h2><span class="section-num">10</span>Performance Analysis</h2>
+        
+        <h3>10.1 Timing Breakdown</h3>
+        <p><strong>Full 22-chromosome run (V9g configuration):</strong></p>
+        
+        <div class="progress-item">
+            <div class="progress-label">
+                <span>Step 1+2 (22 chr)</span>
+                <span class="highlight">261s — 68%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 68%"></div></div>
+        </div>
+        
+        <div class="progress-item">
+            <div class="progress-label">
+                <span>Step 3 (joint LASSO)</span>
+                <span class="highlight">122s — 32%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 32%"></div></div>
+        </div>
+        
+        <div class="metric-box" style="margin: 2rem 0; max-width: 300px;">
+            <div class="value">6.4 min</div>
+            <div class="label">Total Runtime</div>
+        </div>
+
+        <h3>10.2 Throughput Metrics</h3>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Variants processed</td>
+                <td>1,059,798</td>
+            </tr>
+            <tr>
+                <td>Samples</td>
+                <td>235,503</td>
+            </tr>
+            <tr>
+                <td>Genotype calls</td>
+                <td class="highlight">249.6 billion</td>
+            </tr>
+            <tr>
+                <td>Throughput (Step 1+2)</td>
+                <td>~4.1M variants/min</td>
+            </tr>
+            <tr>
+                <td>Throughput (genotypes)</td>
+                <td class="highlight">~950 billion/min</td>
+            </tr>
+        </table>
+
+        <h3>10.3 Speedup Analysis</h3>
+        <div class="two-col">
+            <div class="metric-box">
+                <div class="value">3-5 hrs</div>
+                <div class="label">CPU UniLasso (64 cores)</div>
+            </div>
+            <div class="metric-box">
+                <div class="value" style="color: var(--orange-primary);">28-46×</div>
+                <div class="label">Speedup</div>
+            </div>
+        </div>
+
+        <h3>10.4 Bottleneck Analysis</h3>
+        <div class="progress-item">
+            <div class="progress-label"><span>Storage I/O</span><span>40%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 40%"></div></div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-label"><span>PCIe Transfer</span><span>20%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 20%"></div></div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-label"><span>GPU Compute</span><span>35%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 35%"></div></div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-label"><span>CPU Overhead</span><span>5%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 5%"></div></div>
+        </div>
+        <p><em>Primary bottleneck: Storage I/O (reading .cupgen files)</em></p>
+    </div>
+</section>
+
+<!-- Section 11: Results and Future -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">11</span>Current Results and Future Directions</h2>
+        
+        <h3>11.1 Predictive Performance</h3>
+        <table>
+            <tr>
+                <th>Version</th>
+                <th>SNPs</th>
+                <th>Train R²</th>
+                <th>Test R²</th>
+                <th>Gap</th>
+            </tr>
+            <tr>
+                <td>CPU UniLasso (paper)</td>
+                <td>34,256</td>
+                <td>—</td>
+                <td>0.707</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td>PRS-CS</td>
+                <td>all</td>
+                <td>—</td>
+                <td>0.649</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td class="highlight">UltraLasso V9g</td>
+                <td>25,540</td>
+                <td>0.786</td>
+                <td class="highlight">0.6935</td>
+                <td>0.093</td>
+            </tr>
+        </table>
+        
+        <p><strong>Key findings:</strong></p>
+        <ul>
+            <li>Sparser models (25K vs 34K SNPs) generalize better</li>
+            <li>Beat PRS-CS by <strong class="highlight">+4.5%</strong> with far fewer SNPs</li>
+            <li>Within 1.4% of CPU UniLasso at 28× speed</li>
+        </ul>
+
+        <h3>11.2 Evolution of Results</h3>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Version</th>
+                <th>Key Change</th>
+                <th>Test R²</th>
+            </tr>
+            <tr>
+                <td>Jan 2</td>
+                <td>v1</td>
+                <td>Initial implementation</td>
+                <td>0.661</td>
+            </tr>
+            <tr>
+                <td>Jan 6</td>
+                <td>v2</td>
+                <td>SE-weighted strength</td>
+                <td>0.669</td>
+            </tr>
+            <tr>
+                <td>Jan 7</td>
+                <td>v4</td>
+                <td>Stricter per-chr LASSO</td>
+                <td>0.6795</td>
+            </tr>
+            <tr>
+                <td>Jan 10</td>
+                <td>v9c</td>
+                <td>SNP normalization</td>
+                <td>0.6922</td>
+            </tr>
+            <tr>
+                <td class="highlight">Jan 12</td>
+                <td class="highlight">v9g</td>
+                <td class="highlight">Optimal step3 alpha</td>
+                <td class="highlight">0.6935</td>
+            </tr>
+            <tr>
+                <td>Jan 13</td>
+                <td>v11c</td>
+                <td>Index-based step3</td>
+                <td>0.6932</td>
+            </tr>
+        </table>
+
+        <h3>11.3 Current Best Hyperparameters (V11e)</h3>
+        <div class="two-col">
+            <div>
+                <table>
+                    <tr><th>Parameter</th><th>Value</th></tr>
+                    <tr><td>Block size</td><td>8192</td></tr>
+                    <tr><td>Block %</td><td>25%</td></tr>
+                    <tr><td>Step 2 α</td><td>5e-04</td></tr>
+                    <tr><td>Step 3 α</td><td>6e-03</td></tr>
+                </table>
+            </div>
+            <div>
+                <table>
+                    <tr><th>Parameter</th><th>Value</th></tr>
+                    <tr><td class="highlight">Ridge α</td><td class="highlight">0 (removed)</td></tr>
+                    <tr><td>SNP normalization</td><td>Yes</td></tr>
+                    <tr><td>GPU streaming</td><td>Yes</td></tr>
+                    <tr><td>Split-chromosome</td><td>Yes</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <h3>11.4 Future Directions</h3>
+        <div class="two-col">
+            <div>
+                <h4>Immediate</h4>
+                <ul>
+                    <li>Validation-based selection (V10)</li>
+                    <li>Multi-GPU parallelization</li>
+                    <li>Mixed precision (FP16/FP32)</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Long-term</h4>
+                <ul>
+                    <li>Binary phenotypes (logistic)</li>
+                    <li>External scores integration</li>
+                    <li>Imputed data support</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section 12: GPU GWAS -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">12</span>GPU-Accelerated GWAS with LOCO Predictions</h2>
+        
+        <p>A major future direction is extending UltraLasso to full GWAS on imputed data (~10-40M variants), leveraging LOCO (Leave-One-Chromosome-Out) predictions for improved power.</p>
+
+        <div class="diagram"><strong>GPU-ACCELERATED GWAS PIPELINE</strong>
+
+PHASE 1: Build Polygenic Model (current pipeline)
+┌─────────────────────────────────────────────────────────┐
+│  Step 1+2 (per chr) → Step 3 (joint) → PRS model        │
+│  Input: ~1M array SNPs                                  │
+│  Output: ~25k selected SNPs with coefficients           │
+└─────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+PHASE 2: LOCO Predictions (22 models)
+┌─────────────────────────────────────────────────────────┐
+│  For each target chromosome t:                          │
+│    PRS_LOCO[t] = Σ (β_chr * X_chr) for chr ≠ t          │
+│  → 22 prediction vectors, each excluding one chr        │
+└─────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+PHASE 3: Per-Chromosome GWAS (parallelizable)
+┌─────────────────────────────────────────────────────────┐
+│  For each target chromosome t:                          │
+│    1. Compute residual: y_resid = y - PRS_LOCO[t]       │
+│    2. Stream ALL variants on chr t (imputed cupgen)     │
+│    3. Compute univariate β, SE, p-value                 │
+│                                                         │
+│  Output: Summary statistics for chr t                   │
+└─────────────────────────────────────────────────────────┘</div>
+
+        <h3>Expected Performance</h3>
+        <table>
+            <tr>
+                <th>Phase</th>
+                <th>Input</th>
+                <th>Time</th>
+                <th>Parallelism</th>
+            </tr>
+            <tr>
+                <td>Phase 1</td>
+                <td>1M array SNPs</td>
+                <td>~10 min</td>
+                <td>Single GPU</td>
+            </tr>
+            <tr>
+                <td>Phase 2</td>
+                <td>25k selected SNPs</td>
+                <td>~1 min</td>
+                <td>Single GPU</td>
+            </tr>
+            <tr>
+                <td>Phase 3</td>
+                <td>10-40M imputed SNPs</td>
+                <td>~30-60 min</td>
+                <td>22 GPUs (1/chr)</td>
+            </tr>
+        </table>
+        
+        <div class="metric-box" style="margin: 2rem 0; max-width: 400px;">
+            <div class="value">~45 min</div>
+            <div class="label">Total: Full GWAS (vs hours-days traditional)</div>
+        </div>
+
+        <h3>Key Advantages Over Traditional GWAS</h3>
+        <ul>
+            <li><strong>Polygenic conditioning:</strong> LOCO predictions capture genome-wide signal</li>
+            <li><strong>GPU acceleration:</strong> Orders of magnitude faster than BOLT-LMM or SAIGE</li>
+            <li><strong>Flexible phenotypes:</strong> Same pipeline works for any continuous trait</li>
+            <li><strong>Built on proven infrastructure:</strong> Reuses cupgen streaming, GPU LASSO</li>
+        </ul>
+    </div>
+</section>
+
+<!-- Appendix A: Glossary -->
+<section class="slide">
+    <div class="slide-content">
+        <h2><span class="section-num">A</span>Appendix: Glossary</h2>
+        
+        <div class="glossary-grid">
+            <span class="glossary-term">LASSO</span>
+            <span class="glossary-def">Least Absolute Shrinkage and Selection Operator</span>
+            
+            <span class="glossary-term">LOO</span>
+            <span class="glossary-def">Leave-One-Out (cross-validation technique)</span>
+            
+            <span class="glossary-term">FISTA</span>
+            <span class="glossary-def">Fast Iterative Shrinkage-Thresholding Algorithm</span>
+            
+            <span class="glossary-term">MAF</span>
+            <span class="glossary-def">Minor Allele Frequency</span>
+            
+            <span class="glossary-term">LD</span>
+            <span class="glossary-def">Linkage Disequilibrium</span>
+            
+            <span class="glossary-term">SIMD</span>
+            <span class="glossary-def">Single Instruction, Multiple Data</span>
+            
+            <span class="glossary-term">HBM</span>
+            <span class="glossary-def">High Bandwidth Memory</span>
+            
+            <span class="glossary-term">cuBLAS</span>
+            <span class="glossary-def">CUDA Basic Linear Algebra Subroutines</span>
+            
+            <span class="glossary-term">PRS</span>
+            <span class="glossary-def">Polygenic Risk Score</span>
+            
+            <span class="glossary-term">GWAS</span>
+            <span class="glossary-def">Genome-Wide Association Study</span>
+            
+            <span class="glossary-term">LOCO</span>
+            <span class="glossary-def">Leave-One-Chromosome-Out</span>
+        </div>
+
+        <h3 style="margin-top: 3rem;">References</h3>
+        <ol style="font-size: 0.85rem; color: var(--text-muted);">
+            <li>Richland, J., Kiiskinen, T., et al. (2025). Univariate-Guided Sparse Regression for Biobank-Scale High-Dimensional Omics Data. arXiv:2511.22049v3.</li>
+            <li>Chatterjee, S., Hastie, T., & Tibshirani, R. (2025). Univariate-guided sparse regression. Harvard Data Science Review.</li>
+            <li>Beck, A., & Teboulle, M. (2009). A fast iterative shrinkage-thresholding algorithm for linear inverse problems. SIAM Journal on Imaging Sciences.</li>
+            <li>Yang, J. & Hastie, T. (2024). Adelie: A fast and flexible Python package for group lasso and elastic net.</li>
+        </ol>
+
+        <h3 style="margin-top: 3rem;">Code Availability</h3>
+        <pre><code>Key source files:
+• step1_to_step2_cupgen_windowed.py  — Fused Step 1+2 with chainsaw selection
+• step3_from_cupgen.py               — Index-based Step 3 (V11c)
+• cupgen_reader.py                   — GPU-native .cupgen reader
+• pgen_to_cupgen.py                  — Format converter</code></pre>
+    </div>
+</section>
+
+<footer>
+    <div class="logo pulse">ULTRALASSO</div>
+    <p>
+        <span style="color: var(--orange-primary);">U</span>ltra-fast 
+        <span style="color: var(--orange-primary);">L</span>arge-scale 
+        <span style="color: var(--orange-primary);">T</span>ensor-accelerated 
+        <span style="color: var(--orange-primary);">R</span>egression 
+        <span style="color: var(--orange-primary);">A</span>rchitecture based on 
+        <span style="color: var(--orange-primary);">LASSO</span>
+    </p>
+    <p style="margin-top: 1rem;">Report: January 13, 2026 · Updated with V11 series results and GPU streaming architecture</p>
+</footer>
+
+</body>
+</html>
